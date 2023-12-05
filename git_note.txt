@@ -1,4 +1,5 @@
 This is simple guide for git commands.
+reference: https://www.liaoxuefeng.com/wiki/896043488029600/900375748016320
 
 git init
 git add <file> # from 工作区 to 暂存区
