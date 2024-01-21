@@ -1,0 +1,1 @@
+在python 3.7~3.9环境中 pip install graphscope
