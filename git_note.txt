@@ -1,6 +1,7 @@
 This is simple guide for git commands.
 reference: https://www.liaoxuefeng.com/wiki/896043488029600/900375748016320
 
+#note
 git init
 git add <file> # from 工作区 to 暂存区
 git commit -m <message> # from 暂存区 to 分支
@@ -20,3 +21,9 @@ git switch -c dev # =git branch dev + git switch dev
 git branch # check all branches
 git merge dev
 git branch -d dev
+
+
+#to copy
+git add <file>
+git commit -m "message"
+git push origin main
