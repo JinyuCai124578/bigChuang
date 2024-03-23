@@ -1,0 +1,30 @@
+minicube 实际上是模拟了一个结点
+
+管理员权限打开powershell
+在minikube start之前
+1 给docker 配置镜像源 下载更快
+2 运行
+docker context use default 
+kubectl config set-context minikube
+
+start之后
+kubectl run testapp --image=ccr.ccs.tencentyun.com/k8s-tutorial/test-k8s:v1
+运行 结点名称 镜像地址
+可能要等一会才会显示running的状态
+
+
+graphscope+k8s
+http://www.taodudu.cc/news/show-3798928.html?action=onClick 
+可能只需要在wsl中
+conda activate python38
+wget -O - https://raw.githubusercontent.com/alibaba/GraphScope/main/scripts/install_deps.sh | bash -s -- --k8s
+脚本中包括安装k8s+创建集群
+
+node not ready
+网络插件问题 
+https://blog.csdn.net/qq_33326449/article/details/119703381
+KubeletNotReady runtime network not ready: NetworkReady=false reason:NetworkPluginNotReady message:d
+mkdir -p /etc/cni/net.d
+vi 10-flannel.conflist
+systemctl daemon-reload
+systemctl restart kubelet

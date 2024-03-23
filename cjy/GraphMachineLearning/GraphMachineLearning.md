@@ -40,6 +40,7 @@ $SP_i=Z_i/\sqrt{\sum_j Z_j^2}$ //normalize $Z_i$
 subgraph isomorphism is np-hard----use GNN
  to predict  
 use **order embedding space** to encode subgraph isomorphism (because isomorphism satisfies transitivity\anti-symmetry\closure)  
+encode each subgraph with anchor
 
 **loss function**
 ![Alt text](image-3.png)
@@ -48,6 +49,13 @@ $E(G_q,G_t)=\sum_{i=1}^D(max(0,z_q[i]-z_t[i]))^2$
 $E$ is zero when $G_q$ is a subgraph
 
 **training**
+![Alt text](image-4.png)
+- 在原图中选一个anchor，bfs得到它所有的k阶邻居，得到GT
+- 从anchor开始，以10%概率bfs拓展，k步后得到GQ
 
+**prediction**
+![Alt text](image-5.png)
 
+**SPMiner 模型**  
+https://github.com/snap-stanford/neural-subgraph-learning-GNN
 ### mining frequent  motifs

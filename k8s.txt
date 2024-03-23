@@ -1,0 +1,19 @@
+minicube 实际上是模拟了一个结点
+
+管理员权限打开powershell
+在minikube start之前
+1 给docker 配置镜像源 下载更快
+2 运行
+docker context use default 
+kubectl config set-context minikube
+
+start之后
+kubectl run testapp --image=ccr.ccs.tencentyun.com/k8s-tutorial/test-k8s:v1
+运行 结点名称 镜像地址
+可能要等一会才会显示running的状态
+
+在某个文件夹下创建pod.yaml 并且 kubectl apply -f .\testapp_k8s.yaml 可达到相同效果
+
+端口映射命令
+kubectl port-forward test-k8s-7f7889f755-d8szl 8080:8080
+然后可以通过127.0.0.1:8080 来访问pod提供的服务
