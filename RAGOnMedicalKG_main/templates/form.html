@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Flask 表单示例</title>
+    <style>
+        h2 {
+            text-align: center;
+        }
+        
+        .input_message-container{
+            right:20px;
+            width:300px;
+            background-color: #90EE90; /* 设置背景色 */
+            padding: 10px; /* 设置内边距 */
+            margin-left: auto; /* 将框右对齐 */
+            border-radius: 8px; /* 设置圆角 */
+            font-size: 14px; /* 设置字体大小 */
+            text-align: left;
+            padding-left: 20px;
+            
+        }
+
+        .output_message-container {
+            left:20px;
+            background-color: #f2f2f2; /* 设置背景色 */
+            width:300px;
+            padding: 10px; /* 设置内边距 */
+            margin: 10px 0; /* 设置外边距 */
+            border-radius: 8px; /* 设置圆角 */
+            font-size: 14px; /* 设置字体大小 */
+            text-align: left;
+            padding-left: 20px;
+        }
+
+
+        .container {
+            padding:100px,200px;
+            font-size: 20px;
+            position: absolute; /* 设置为绝对定位 */
+            bottom: 20px; /* 距离底部的距离 */
+            right: 20px; /* 距离右侧的距离 */
+            width: 100px;
+            height: 60px;
+            color: white; /* 字体颜色 */
+            background-color: #4CAF50; /* 背景颜色 */
+            border-radius: 4px; /* 添加圆角 */
+            cursor: pointer; /* 鼠标悬停时显示指针 */
+        }
+
+        .container2{
+            position: absolute; /* 设置为绝对定位 */
+            bottom: 20px; /* 距离底部的距离 */
+            right: 150px; /* 距离右侧的距离 */
+            left: 20px;
+            height:60;
+            font-size: 15px;
+            padding: 20px;
+            background-color: #f9f9f9;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <h2>智能医疗</h2>
+    <hr>
+    <form action="/submit" method="post">
+
+        <div><input type="text" id="input_text" name="input_text"  class = "container2"><br><br></div>
+        <div ><input type="submit" value="提交" class = "container"></div>
+    </form>
+    {% if input %}
+        <div class = "input_message-container">
+            <p> {{input}}</p>
+        </div>
+        <div class="output_message-container">
+            <p>{{output}}</p>
+        </div>
+    {% endif %}
+</body>
+</html>

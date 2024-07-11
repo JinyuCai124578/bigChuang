@@ -1,0 +1,14 @@
+KGLLM 代办
+换图谱！
+
+
+
+技术路线选择：
+使用langchain框架？
+vector查询？
+neo4j调研 https://graphacademy.neo4j.com/courses/llm-fundamentals/
+
+基于当前：
+更好的知识图谱？知识图谱清洗、与当前的融合
+交互问答：prompt版
+图片
