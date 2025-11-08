@@ -5,6 +5,7 @@ from tqdm import tqdm
 import requests
 import json
 import time
+from openai import OpenAI
 
 
 class ModelAPI():
@@ -41,13 +42,39 @@ class ModelAPI():
                 print('Exception:', e)
                 time.sleep(1)
         return response, history
+
+
+class OpenAIModelAPI:
+    def __init__(self, base_url,api_key):
+        self.client = OpenAI(base_url=base_url, api_key=api_key)
+
+    def send_request(self, messages):
+        try:
+            completion = self.client.chat.completions.create(
+                model="gpt-4.1",  # 或者使用你有访问权限的模型，例如 "gpt-3.5-turbo"
+                messages=messages
+            )
+            response = completion.choices[0].message.content
+            # 假设 history 不是由 API 直接返回，需要自行管理
+            history = messages + [{"role": "assistant", "content": response}]
+            return response, history
+        except Exception as e:
+            print("Request error:", e)
+            return "", []
+
+    def chat(self, query, history=[]):
+        message = [{"role": "user", "content": query}]
+        # 将新消息添加到历史记录中
+        messages = history + message
+        response, history = self.send_request(messages)
+        return response, history
     
 class PuyuModelAPI():
-    def __init__(self, MODEL_URL='https://internlm-chat.intern-ai.org.cn/puyu/api/v1/chat/completions'):
+    def __init__(self, MODEL_URL='https://chat.intern-ai.org.cn/api/v1/chat/completions'):
         self.url = MODEL_URL
         self.header={
                         'Content-Type':'application/json',
-                        "Authorization":"Bearer eyJ0eXBlIjoiSldUIiwiYWxnIjoiSFM1MTIifQ.eyJqdGkiOiI1MDIxMTAxNyIsInJvbCI6IlJPTEVfUkVHSVNURVIiLCJpc3MiOiJPcGVuWExhYiIsImlhdCI6MTcyMDYwNTMyNSwiY2xpZW50SWQiOiJlYm1ydm9kNnlvMG5semFlazF5cCIsInBob25lIjoiMTc3NjUxMjI5MDIiLCJ1dWlkIjoiNDg5NTFlN2ItYjFlZi00ODE1LTkzZDgtYzUxOThjMjI0YmU1IiwiZW1haWwiOiJjYWlfamlueXVAc2p0dS5lZHUuY24iLCJleHAiOjE3MzYxNTczMjV9.e4UySyg3vLVJOgx8xg-cRhsi0tf2oPrm4Q3zfukY_2Y-_ui01UXe84LI8U9W653LCMkaMO784FAb7q2yQ_rygg"
+                        "Authorization":"Bearer eyJ0eXBlIjoiSldUIiwiYWxnIjoiSFM1MTIifQ.eyJqdGkiOiI1MDIxMTAxNyIsInJvbCI6IlJPTEVfUkVHSVNURVIiLCJpc3MiOiJPcGVuWExhYiIsImlhdCI6MTc0Mjk5MTUwOCwiY2xpZW50SWQiOiJlYm1ydm9kNnlvMG5semFlazF5cCIsInBob25lIjoiMTc3NjUxMjI5MDIiLCJvcGVuSWQiOm51bGwsInV1aWQiOiIyODI4ZDIyMi04MDQwLTRhMTItOTI1Yi1hYjkyMjNhM2E1MzQiLCJlbWFpbCI6ImNhaV9qaW55dUBzanR1LmVkdS5jbiIsImV4cCI6MTc1ODU0MzUwOH0.cWGLo7od_5-rdarrS3CmL5dW3Fe9QV2RDLyrliptl7FpJ0QodG0eekWHiBBuFl_HrLgTeRoUHTC35lEKCwskkQ"
                     }
         
 
@@ -66,7 +93,7 @@ class PuyuModelAPI():
 
     def chat(self, query, history=[]):
         data = {
-                    "model": "internlm2-latest",  
+                    "model": "internlm2.5-latest",  
                     "messages": [{
                         "role": "user",
                         "text": query

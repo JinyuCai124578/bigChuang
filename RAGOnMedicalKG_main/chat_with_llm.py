@@ -2,14 +2,17 @@
 import os
 from question_classifier import QuestionClassifier
 from question_parser import *
-from llm_server import ModelAPI,PuyuModelAPI
+from llm_server import ModelAPI,PuyuModelAPI,OpenAIModelAPI
 from build_medicalgraph import *
 import re
+import pdb
+import json
 
 entity_parser = QuestionClassifier()
 
 kg = MedicalGraph()
-model = PuyuModelAPI()
+# model = PuyuModelAPI()
+model=OpenAIModelAPI()
 
 class KGRAG_test():
     def __init__(self):
@@ -52,16 +55,28 @@ class KGRAG_test():
             "producer":["name"],
             "symptom":["name", 'has_symptom'],
         }
+        self.history=[]
+        self.chat_file=[]
+        self.entity={}
+        self.chat_cnt=0
+        self.current_chat=0
         return
 
     def entity_linking(self, query):
-        return entity_parser.check_medical(query) # QuestionClassifier.check_medical(query) return dict {word: wdtype} {关键词: 关键词所属类别}
+        current_entity = entity_parser.check_medical(query) # QuestionClassifier.check_medical(query) return dict {word: wdtype} {关键词: 关键词所属类别}
+        # pdb.set_trace()
+        if not current_entity:
+            return self.entity
+        else:
+            self.entity=current_entity
+            return current_entity
+
 
     def link_entity_rel(self, query, entity, entity_type):
         cate = [self.cn_dict.get(i) for i in self.entity_rel_dict.get(entity_type)]
         prompt = "请判定问题：{query}所提及的是{entity}的哪几个信息，请从{cate}中进行选择，并以列表形式返回，如['预防措施', '治疗方式', '名称']；如你不觉得问题问及相关信息，请返回空列表[]".format(query=query, entity=entity, cate=cate)
         print("prompt:",prompt)
-        answer, history = model.chat(query=prompt, history=[])
+        answer, _ = model.chat(query=prompt, history=[])
         print("answer:",answer)
         cls_rel = set([i for i in re.split(r"[\[。、, ; .'\]]", answer)]).intersection(set(cate))
         print("cls_rel:",cls_rel)
@@ -127,7 +142,7 @@ class KGRAG_test():
         answer = ""
         default = "抱歉，我在知识库中没有找到对应的实体，无法回答。"
         if not entity_dict:
-            answer=model.chat(query="假设你是一个人类医生，请回答病人提出的问题："+query,history=[])
+            answer,self.history=model.chat(query="假设你是一个人类医生，请回答病人提出的问题："+query,history=self.history)
             return answer
         
         print("step2：recall kg facts....")
@@ -139,9 +154,49 @@ class KGRAG_test():
                 facts += entity_triples
         fact_prompt = self.format_prompt(query, facts)
         print("step3：generate answer...")
-        answer,_ = model.chat(query=fact_prompt, history=[])
+        answer,self.history = model.chat(query=fact_prompt, history=self.history)
+        # pdb.set_trace()
         return answer
 
+    def save_to_file(self):
+        # self.history to json file
+        file_path = f"chat_history_{self.current_chat}.json"
+        history_save=[]
+        # pdb.set_trace()
+        for i in range(len(self.history)):
+            if self.history[i].get("role")=="user":
+                triplet=self.history[i].get("content").split("知识三元组集合为：")[-1].split("\n问题是：")[0].strip()
+                question=self.history[i].get("content").split("\n问题是：")[-1].split("\n请回答：")[0].strip()
+                history_save.append({"role":"user", "content":question})
+                history_save.append({"role":"system", "content":triplet})
+            else:
+                history_save.append(self.history[i])
+        history_save.append({"entity":self.entity})
+
+        with open(file_path, "w", encoding="utf-8") as f:
+            json.dump(history_save, f, ensure_ascii=False, indent=4)
+            print(f"chat history saved to {file_path}")
+        if self.current_chat==self.chat_cnt:
+            self.chat_cnt+=1
+        self.current_chat=self.chat_cnt
+        self.history = []
+        entity=self.entity
+        self.entity={}
+        return file_path, entity
+    
+    def load_history(self, file_path):
+        if os.path.exists(file_path):
+            with open(file_path, "r", encoding="utf-8") as f:
+                self.current_chat=int(file_path.split("chat_history_")[-1].split(".json")[0])
+                self.history = json.load(f)
+                self.entity=self.history[-1].get("entity",{})
+                del self.history[-1]
+                print(f"chat history loaded from {file_path}, entity: {self.entity}")
+                
+            return self.history
+        else:
+            print(f"file {file_path} does not exist.")
+            return None
 
 class KGRAG():
     def __init__(self):
@@ -191,7 +246,7 @@ class KGRAG():
 
     def link_entity_rel(self, query, entity, entity_type):
         cate = [self.cn_dict.get(i) for i in self.entity_rel_dict.get(entity_type)]
-        prompt = "请判定问题：{query}所提及的是{entity}的哪几个信息，请从{cate}中进行选择，并以列表形式返回，如['预防措施', '治疗方式', '名称']；如你不觉得问题问及相关信息，请返回空列表[]".format(query=query, entity=entity, cate=cate)
+        prompt = "请判定问题：{query}，回答问题需要{entity}的哪几个信息，请从{cate}中进行选择，并以列表形式返回，如['预防措施', '名称']；如你不觉得问题问及相关信息，请返回空列表[]".format(query=query, entity=entity, cate=cate)
         
         answer, history = model.chat(query=prompt, history=[])
       
@@ -234,7 +289,7 @@ class KGRAG():
                 if rel["name"] not in cls_rel:
                     continue
                 triples.add("<" + ','.join([str(rel.start_node["name"]), str(rel["name"]), str(rel.end_node["name"])]) + ">")
-        return list(triples)[:10]
+        return list(triples)[:20]
 
 
     def format_prompt(self, query, context):
@@ -272,5 +327,13 @@ if __name__ == "__main__":
     chatbot = KGRAG_test()
     while 1:
         query = input("USER:").strip()
-        answer = chatbot.chat(query)
+        # query = "Goodpasture综合征有什么症状？"
+        if query == "save":
+            file_name, entity=chatbot.save_to_file()
+        elif query== "load":
+            filename = input("请输入要加载的文件名：").strip()
+            history = chatbot.load_history(file_path=filename)
+            print("加载的聊天记录：", history)
+        else:
+            answer = chatbot.chat(query)
         print("KGRAG_BOT:", answer)

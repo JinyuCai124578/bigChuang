@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <title>智能医疗聊天</title>
+    <style>
+        body {
+            display: flex;
+            margin: 0;
+            font-family: "Microsoft YaHei", sans-serif;
+        }
+
+        .sidebar {
+            width: 240px;
+            background-color: #f0f0f0;
+            padding: 20px;
+            border-right: 1px solid #ddd;
+            height: 100vh;
+            overflow-y: auto;
+        }
+
+        .sidebar h3 {
+            margin-top: 0;
+            font-size: 18px;
+        }
+
+        .record-item {
+            margin: 10px 0;
+            font-size: 16px;
+            color: #333;
+        }
+
+        .main {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+
+        h2 {
+            text-align: center;
+            margin: 10px;
+            font-size: 26px;
+        }
+        
+
+        .chat-container {
+            flex: 1;
+            margin: 10px 20px;
+            padding: 15px;
+            background-color: #ffffff;
+            border-radius: 8px;
+            overflow-y: auto;
+            border: 1px solid #ccc;
+        }
+
+        .message {
+            max-width: 80%;
+            padding: 10px 15px;
+            margin: 10px;
+            border-radius: 16px;
+            font-size: 18px;
+            line-height: 1.6;
+            cursor: pointer;
+            word-break: break-word;
+        }
+
+        .user-message {
+            background-color: #cfe9ff;
+            margin-left: auto;
+        }
+
+        .bot-message {
+            background-color: #ffe1e1;
+            margin-right: auto;
+        }
+
+        form {
+            display: flex;
+            justify-content: center;
+            padding: 10px 20px;
+            align-items: center;
+            border-top: 1px solid #ccc;
+            background-color: #fff;
+            position: sticky;
+            bottom: 0;
+            z-index: 10;
+        }
+
+        input[type="text"] {
+            width: 60%;
+            padding: 12px;
+            font-size: 18px;
+            border: 1px solid #aaa;
+            border-radius: 8px;
+        }
+
+        input[type="submit"],
+        button {
+            margin-left: 10px;
+            padding: 12px 20px;
+            font-size: 16px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+
+        #voice-btn {
+            background-color: #2196F3;
+            color: white;
+        }
+
+        #save-btn {
+            background-color: #4CAF50;
+            color: white;
+        }
+
+        .magnifier-tip {
+            position: fixed;
+            top: 10px;
+            right: 20px;
+            background-color: #fffae6;
+            color: #444;
+            padding: 8px 14px;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            font-size: 14px;
+            z-index: 999;
+        }
+
+        #magnifier-lens {
+            display: none;
+            position: fixed;
+            width: 150px;
+            height: 150px;
+            pointer-events: none;
+            overflow: hidden;
+            border-radius: 50%;
+            border: 3px solid #999;
+            z-index: 998;
+            box-shadow: 0 0 12px rgba(0, 0, 0, 0.5);
+        }
+
+        #magnifier-content {
+            transform: scale(2);
+            transform-origin: top left;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body>
+
+<div class="sidebar">
+    <h3>问诊记录</h3>
+    {% for file in files %}
+        <div class="record-item">{{ file }}</div>
+    {% endfor %}
+</div>
+
+<div class="main">
+    <div class="magnifier-tip">右键打开放大镜，点击消息可朗读</div>
+    <h2>智能医疗问诊助手</h2>
+
+    <div class="chat-container" id="chatBox">
+        {% for msg in chat_history %}
+            <div class="message {% if msg.role == 'user' %}user-message{% else %}bot-message{% endif %}">
+                {{ msg.text | safe }}
+            </div>
+        {% endfor %}
+    </div>
+
+    <form id="chatForm">
+        <input type="text" id="input_text" name="input_text" placeholder="请输入您要说的话..." required>
+        <input type="submit" value="发送">
+        <button type="button" id="voice-btn" onclick="startVoice()">🎤 语音输入</button>
+        <button type="button" id="save-btn" onclick="saveChat()">💾 完成问诊 保存为问诊记录</button>
+    </form>
+    <script>
+        document.getElementById('chatForm').onsubmit = function(event) {
+            event.preventDefault();
+            var inputText = document.getElementById('input_text').value;
+
+            // 使用Ajax发送请求
+            var xhr = new XMLHttpRequest();
+            xhr.open('POST', '/submit', true);
+            xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+            xhr.onload = function() {
+                if (xhr.status === 200) {
+                    var chatHistory = JSON.parse(xhr.responseText);
+                    var chatBox = document.getElementById('chatBox');
+                    chatBox.innerHTML = '';
+
+                    // 更新聊天记录
+                    chatHistory.forEach(function(msg) {
+                        var messageDiv = document.createElement('div');
+                        messageDiv.className = 'message ' + (msg.role === 'user' ? 'user-message' : 'bot-message');
+                        messageDiv.innerHTML = msg.content;
+                        chatBox.appendChild(messageDiv);
+                    });
+
+                    // 清空输入框
+                    document.getElementById('input_text').value = '';
+                }
+            };
+            xhr.send('input_text=' + encodeURIComponent(inputText));
+        };
+    </script>
+</div>
+
+<!-- 放大镜 -->
+<div id="magnifier-lens">
+    <div id="magnifier-content"></div>
+</div>
+
+<script>
+    window.onload = function () {
+        document.getElementById("chatBox").scrollTop = 9999;
+        document.querySelectorAll(".message").forEach(msg => {
+            msg.addEventListener("click", function () {
+                const utter = new SpeechSynthesisUtterance(this.innerText);
+                utter.lang = 'zh-CN';
+                utter.rate = 1;
+                speechSynthesis.speak(utter);
+            });
+        });
+    };
+
+    function startVoice() {
+        const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+        recognition.lang = 'zh-CN';
+        recognition.start();
+        recognition.onresult = function (event) {
+            document.getElementById("input_text").value = event.results[0][0].transcript;
+        };
+        recognition.onerror = function (event) {
+            alert("语音识别失败: " + event.error);
+        };
+    }
+
+    function saveChat() {
+        fetch('/save', { method: 'POST' })
+        .then(res => res.json())
+        .then(data => {
+            if (data.status === 'ok') {
+                alert("保存成功：" + data.filename);
+                // 创建重新加载按钮，并与文件名关联
+                createReloadButton(data.filename, data.entity);
+
+                // 清空chatBox中的内容
+                var chatBox = document.getElementById('chatBox');
+                chatBox.innerHTML = '';
+            }
+        })
+        .catch(error => {
+            console.error('保存聊天记录时发生错误:', error);
+        });
+    }
+
+    function createReloadButton(filename, entity) {
+        // 获取侧边栏的容器
+        var sidebar = document.querySelector('.sidebar');
+        
+        // 检查是否已经存在具有相同filename的按钮
+        var existingButton = Array.from(sidebar.querySelectorAll('.record-item button')).find(function(button) {
+            return button.getAttribute('data-filename') === filename;
+        });
+        
+        if (existingButton) {
+            // 如果找到了匹配的按钮，则不添加新按钮
+            console.log('按钮已存在，不添加新按钮');
+            return;
+        }
+        
+        // 创建一个新的div元素作为按钮容器
+        var buttonContainer = document.createElement('div');
+        buttonContainer.className = 'record-item';
+        
+        // 创建按钮
+        var button = document.createElement('button');
+        button.textContent = entity;
+        button.setAttribute('data-filename', filename);  // 使用data属性存储filename
+        button.onclick = function() {
+            loadChat(filename);  // 点击按钮时加载相应的聊天记录
+        };
+        
+        // 将按钮添加到按钮容器
+        buttonContainer.appendChild(button);
+        
+        // 将按钮容器添加到侧边栏
+        sidebar.appendChild(buttonContainer);
+    }
+
+    function loadChat(filename) {
+        // 使用fetch加载指定文件名的对话内容
+        fetch('/load?filename=' + filename)
+        .then(res => res.json())  // 假设服务器返回的是JSON格式的数据
+        .then(data => {
+            if (data.error) {
+                alert("加载对话失败: " + data.error);
+            } else {
+                // 清空chatBox中的现有内容
+                var chatBox = document.getElementById('chatBox');
+                chatBox.innerHTML = '';
+
+                // 遍历聊天记录并插入到chatBox中
+                data.forEach(function(msg) {
+                    var messageDiv = document.createElement('div');
+                    messageDiv.className = 'message ' + (msg.role === 'user' ? 'user-message' : 'bot-message');
+                    messageDiv.innerHTML = msg.content;
+                    chatBox.appendChild(messageDiv);
+                });
+
+                // 滚动到页面底部
+                chatBox.scrollTop = chatBox.scrollHeight;
+            }
+        })
+        .catch(error => {
+            alert("加载对话失败: " + error.message);
+        });
+    }
+
+    window.addEventListener("beforeunload", function (e) {
+        navigator.sendBeacon('/save');
+    });
+
+    let magnifierOn = false;
+    const lens = document.getElementById("magnifier-lens");
+    const content = document.getElementById("magnifier-content");
+
+    document.addEventListener("contextmenu", function (e) {
+        e.preventDefault();
+        if (magnifierOn) {
+            lens.style.display = "none";
+            content.innerHTML = "";
+            magnifierOn = false;
+            return;
+        }
+        content.innerHTML = document.body.innerHTML;
+        lens.style.left = (e.clientX - 75) + "px";
+        lens.style.top = (e.clientY - 75) + "px";
+        lens.style.display = "block";
+        content.style.position = "absolute";
+        content.style.left = -e.clientX + "px";
+        content.style.top = -e.clientY + "px";
+        magnifierOn = true;
+    });
+
+    document.addEventListener("mousemove", function (e) {
+        if (magnifierOn) {
+            lens.style.left = (e.clientX - 75) + "px";
+            lens.style.top = (e.clientY - 75) + "px";
+            content.style.left = -e.clientX + "px";
+            content.style.top = -e.clientY + "px";
+        }
+    });
+</script>
+
+</body>
+</html>
